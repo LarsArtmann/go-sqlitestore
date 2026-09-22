@@ -312,6 +312,20 @@ func (d *DB) ExecWrite(ctx context.Context, query string, args ...any) (sql.Resu
 	return nil, lastErr
 }
 
+// WithWriteLock runs fn while holding the engine's write mutex, for
+// multi-statement units (transactions, batch inserts) that must serialize
+// as one write. Single statements should use ExecWrite instead.
+func (d *DB) WithWriteLock(fn func() error) error {
+	if d == nil || d.db == nil {
+		return errorfamily.NewInfrastructure("sqlitestore.closed", "write lock on closed store")
+	}
+
+	d.writeMu.Lock()
+	defer d.writeMu.Unlock()
+
+	return fn()
+}
+
 // BusyRetryCount returns the total number of SQLITE_BUSY retries across
 // this database's lifetime, for telemetry and write-path diagnostics.
 func (d *DB) BusyRetryCount() int64 {
