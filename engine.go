@@ -38,6 +38,10 @@ const (
 	permDir = 0o755
 )
 
+// DefaultBusyTimeoutMS is the busy timeout used by BuildDSN and Open when
+// no WithBusyTimeout option overrides it.
+const DefaultBusyTimeoutMS = defaultBusyTimeoutMS
+
 // DB is the engine core over one SQLite database: it owns the write mutex,
 // the SQLITE_BUSY retry policy, and the busy-retry/debug counters.
 //
@@ -115,6 +119,10 @@ func OpenDB(path string, opts ...Option) (*sql.DB, error) {
 		opt(&cfg)
 	}
 
+	return openDBWithTimeout(path, cfg)
+}
+
+func openDBWithTimeout(path string, cfg config) (*sql.DB, error) {
 	dir := filepath.Dir(path)
 
 	if err := os.MkdirAll(dir, permDir); err != nil {
@@ -122,7 +130,7 @@ func OpenDB(path string, opts ...Option) (*sql.DB, error) {
 			"failed to create database directory "+dir)
 	}
 
-	db, err := sql.Open(driverName, BuildDSN(path, cfg.busyTimeoutMS))
+	db, err := sql.Open(driverName, BuildDSNWithBusyTimeout(path, cfg.busyTimeoutMS))
 	if err != nil {
 		return nil, errorfamily.WrapInfrastructure(err, "sqlitestore.open",
 			"failed to open database "+path)
@@ -141,7 +149,6 @@ func OpenDB(path string, opts ...Option) (*sql.DB, error) {
 
 		return nil, err
 	}
-
 	maxConns := cfg.maxOpenConns
 	if !cfg.applyConnLimit {
 		maxConns = max(4, min(runtime.NumCPU(), 8))
@@ -168,16 +175,22 @@ func New(db *sql.DB, opts ...Option) *DB {
 	return core
 }
 
-// BuildDSN constructs a DSN string with per-connection PRAGMA parameters.
-// Every connection in the pool inherits these PRAGMAs automatically, which
-// is essential once the pool has more than one connection: without
-// DSN-level PRAGMAs, new connections would use SQLite defaults (rollback
-// journal, busy_timeout=0).
+// BuildDSN constructs a DSN for path with the engine's default busy
+// timeout and the standard per-connection PRAGMA parameters.
+func BuildDSN(path string) string {
+	return BuildDSNWithBusyTimeout(path, DefaultBusyTimeoutMS)
+}
+
+// BuildDSNWithBusyTimeout constructs a DSN with per-connection PRAGMA
+// parameters. Every connection in the pool inherits these PRAGMAs
+// automatically, which is essential once the pool has more than one
+// connection: without DSN-level PRAGMAs, new connections would use SQLite
+// defaults (rollback journal, busy_timeout=0).
 //
 // The modernc.org/sqlite driver applies shorthand keys (_busy_timeout,
 // _journal_mode, etc.) in a fixed order before _pragma values, ensuring
 // auto_vacuum is set before the first write.
-func BuildDSN(path string, busyTimeoutMS int) string {
+func BuildDSNWithBusyTimeout(path string, busyTimeoutMS int) string {
 	return path +
 		"?_busy_timeout=" + strconv.Itoa(busyTimeoutMS) +
 		"&_journal_mode=wal" +
