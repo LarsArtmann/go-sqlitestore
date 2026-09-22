@@ -326,6 +326,16 @@ func (d *DB) WithWriteLock(fn func() error) error {
 	return fn()
 }
 
+// WriteLock acquires the engine's write mutex and returns its release
+// function, for flows where a deferred unlock reads better than a closure.
+// Multi-statement units (transactions) held across the lock still count as
+// one serialized write.
+func (d *DB) WriteLock() func() {
+	d.writeMu.Lock()
+
+	return d.writeMu.Unlock
+}
+
 // BusyRetryCount returns the total number of SQLITE_BUSY retries across
 // this database's lifetime, for telemetry and write-path diagnostics.
 func (d *DB) BusyRetryCount() int64 {
