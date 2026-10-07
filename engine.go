@@ -155,6 +155,11 @@ func openDBWithTimeout(path string, cfg config) (*sql.DB, error) {
 	}
 
 	db.SetMaxOpenConns(maxConns)
+	// Keep idle conns equal to the open cap: closing and re-opening pooled
+	// SQLite connections costs a fresh page-cache warmup per connection, and
+	// parallel-read bursts (database/sql default keeps only 2 idle) triggered
+	// visible re-open churn under BuildFlow's multi-reader fan-out.
+	db.SetMaxIdleConns(maxConns)
 
 	return db, nil
 }
