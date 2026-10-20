@@ -3,8 +3,8 @@ module github.com/larsartmann/go-sqlitestore
 go 1.27
 
 require (
-	github.com/larsartmann/go-error-family v0.11.0
-	github.com/onsi/ginkgo/v2 v2.33.0
+	github.com/larsartmann/go-error-family v0.12.0
+	github.com/onsi/ginkgo/v2 v2.33.1
 	github.com/onsi/gomega v1.44.0
 	modernc.org/sqlite v1.60.1
 )
