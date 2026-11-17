@@ -33,28 +33,36 @@ buildflow -s <tool> --format finding   # drill into one tool's findings
 dprint fmt
 ```
 
-A green buildflow run can still exit non-zero: the findings gate fails when
-`error`-severity findings remain (engine.go's 443-line size is the open one;
-see TODO_LIST). Read the summary, not just the exit code. `reports/` is
-buildflow's artifact dir — gitignored, never commit it.
+The findings gate fails when `error`-severity findings remain; the gate is
+green as of 2026-11-17 — the known surviving warnings are the
+go-structure-linter `internal/` suggestion (declined non-fix, single-
+package lib) and branching-flow "swap hazard" branding hints on the
+identifier-typed helpers. Read the summary, not just the exit code.
+`reports/` is buildflow's artifact dir — gitignored, never commit it.
 
 Go lint without buildflow: `golangci-lint run ./...` (CONTRIBUTING.md), but
 prefer `buildflow -s golangci-lint` for the verify step and cache isolation.
 
 ## Layout
 
-Flat, four source files — no subpackages, and deliberately no
-`internal/` (single-package library; the go-structure-linter's `internal/`
-suggestion is a declined non-fix):
+Flat, single package, no subpackages, and deliberately no `internal/`
+(single-package library; the go-structure-linter's `internal/` suggestion
+is a declined non-fix). All files stay under the 350-line file-size gate
+(the 2026-11-17 split carved `engine.go` into three):
 
 - `doc.go` — package documentation (keep in sync with README's description)
-- `engine.go` — the `DB` core: `Open`/`OpenDB`/`New`, DSN builders, WAL +
-  optimization PRAGMAs, `ExecWrite` (write mutex + SQLITE_BUSY retry),
-  `WithWriteLock`/`WriteLock`, `HealthCheck`, `PurgeByExpiry`, `IsBusy`
-  (443 lines — over the 350-line file-size gate; the split is TODO_LIST'd)
+- `engine.go` — connection core: `DB` struct, `Open`/`OpenDB`/`New`, options
+  and pool sizing, `HealthCheck`, `PurgeByExpiry`, `BusyRetryCount`,
+  `SetDebugSQL`, `Close`
+- `dsn.go` — `BuildDSN`/`BuildDSNWithBusyTimeout`, `EnableWAL`,
+  `ApplyOptimizations` (every PRAGMA decision lives here)
+- `write.go` — the write path: `ExecWrite` (mutex + SQLITE_BUSY retry),
+  `WithWriteLock`/`WriteLock`, `IsBusy`, `TruncateSQL` (driver registration
+  rides this file's modernc.org/sqlite import)
 - `migrations.go` — `RunMigrations` + schema introspection helpers
   (`TableExists`, `ColumnExists`, `AddColumnIfNotExists`)
-- `sqlitestore_test.go` + `suite_test.go` — Ginkgo/Gomega specs
+- `sqlitestore_test.go` + `migrations_test.go` + `suite_test.go` —
+  Ginkgo/Gomega specs, split the same way
 
 ## Documentation set
 
@@ -124,8 +132,10 @@ touch these.
 - **Logging**: `log/slog` at package level; Debug for per-statement/retry
   noise, Info for migration application, Warn for exhausted retries.
 - **Driver**: `modernc.org/sqlite` (pure Go, no cgo), driver name `"sqlite"`.
-  The import block pulls it three ways: blank import (registration), named
-  `sqlite` (error type), `sqlite3 ... /lib` (result-code constants).
+  `write.go` imports it as named `sqlite` (error type) plus
+  `sqlite3 ... /lib` (result-code constants); importing the package at all
+  runs its init, which registers the driver — no separate blank import
+  needed.
 - **Go version**: go.mod says `go 1.27`; tests documented with
   `GOEXPERIMENT=jsonv2`.
 - **Tests**: Ginkgo v2 + Gomega, external test package (`sqlitestore_test`),
@@ -150,5 +160,10 @@ go-release skill. Dependabot keeps go modules weekly (minor+patch grouped).
   commits you didn't make, and verify critical work lands with `git status`.
 - `.config/metadata.yaml` is project-tracking metadata (tags: `lib`) —
   managed externally, leave alone.
+- The buildflow pre-commit hook is installed (`buildflow precommit
+  install`, 2026-11-17); it runs the pre-commit mode gate and re-stages
+  formatted files on commit.
+- `.golangci.yml` is auto-configure-managed — prefer
+  `buildflow -s golangci-lint-auto-configure --fix` over hand-curating it.
 - No CI workflows beyond dependabot; quality enforcement is local buildflow
-  - pre-commit habits.
+  plus the pre-commit hook.

@@ -17,6 +17,17 @@ Release dates match the git tag dates (`git for-each-ref refs/tags`).
 - Documentation set: `AGENTS.md`, `FEATURES.md`, `ROADMAP.md`,
   `TODO_LIST.md`; README gained an installation section and a
   compile-checked usage example.
+- Curated `.golangci.yml` (seeded, then generated via buildflow
+  `golangci-lint-auto-configure`) and the buildflow pre-commit hook.
+
+### Changed
+
+- Split `engine.go` (443 lines) into `engine.go` (connection core, 246
+  lines), `dsn.go` (DSN + PRAGMA builders, 74), and `write.go` (write
+  path, busy retry, `IsBusy`, 140); split the test suite into
+  `sqlitestore_test.go` + `migrations_test.go`. No API change — package,
+  exports, and behavior are identical; the full buildflow quality gate now
+  exits 0.
 
 ### Fixed
 
