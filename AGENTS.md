@@ -34,24 +34,39 @@ dprint fmt
 ```
 
 A green buildflow run can still exit non-zero: the findings gate fails when
-`error`-severity findings remain (currently go-structure-linter/docs-gates/
-file-size-check complaints exist). Read the summary, not just the exit code.
-`reports/` is buildflow's artifact dir — gitignored, never commit it.
+`error`-severity findings remain (engine.go's 443-line size is the open one;
+see TODO_LIST). Read the summary, not just the exit code. `reports/` is
+buildflow's artifact dir — gitignored, never commit it.
 
 Go lint without buildflow: `golangci-lint run ./...` (CONTRIBUTING.md), but
 prefer `buildflow -s golangci-lint` for the verify step and cache isolation.
 
 ## Layout
 
-Flat, four source files — no subpackages, no internal/:
+Flat, four source files — no subpackages, and deliberately no
+`internal/` (single-package library; the go-structure-linter's `internal/`
+suggestion is a declined non-fix):
 
 - `doc.go` — package documentation (keep in sync with README's description)
 - `engine.go` — the `DB` core: `Open`/`OpenDB`/`New`, DSN builders, WAL +
   optimization PRAGMAs, `ExecWrite` (write mutex + SQLITE_BUSY retry),
   `WithWriteLock`/`WriteLock`, `HealthCheck`, `PurgeByExpiry`, `IsBusy`
+  (443 lines — over the 350-line file-size gate; the split is TODO_LIST'd)
 - `migrations.go` — `RunMigrations` + schema introspection helpers
   (`TableExists`, `ColumnExists`, `AddColumnIfNotExists`)
 - `sqlitestore_test.go` + `suite_test.go` — Ginkgo/Gomega specs
+
+## Documentation set
+
+Living docs follow the docs-health ownership model — each fact lives in
+exactly one file: `FEATURES.md` (inventory + honest status), `TODO_LIST.md`
+(open work only; done items move to CHANGELOG), `ROADMAP.md` (raw ideas),
+`CHANGELOG.md` (append-only after release; dates must match git tag dates —
+no template placeholders). The docs-gates battery rides inside buildflow
+(`docs-gates cadence .` fails hard when `TODO_LIST.md` is missing). This
+repo has no `docs/status/` corpus — status reports about this library
+live in consumer repos (BuildFlow), which is deliberate for a lib this
+small.
 
 ## Architecture invariants (don't break these casually)
 
@@ -114,8 +129,11 @@ touch these.
 - **Go version**: go.mod says `go 1.27`; tests documented with
   `GOEXPERIMENT=jsonv2`.
 - **Tests**: Ginkgo v2 + Gomega, external test package (`sqlitestore_test`),
-  real on-disk databases in `GinkgoT().TempDir()` — no mocks. Test behavior,
-  not internals (e.g. migration tests assert via `schema_migrations` contents).
+  real on-disk databases in `GinkgoT().TempDir()` — no mocks, and the
+  driver cannot be stubbed (unexported error fields), so contention specs
+  reproduce a REAL SQLITE_BUSY with two connections and `busy_timeout=0`.
+  Test behavior, not internals (e.g. migration tests assert via
+  `schema_migrations` contents).
 - **Style**: tabs in Go, 2-space in yml/json (`.editorconfig`); dprint owns
   non-Go formatting; `*.md` keeps trailing whitespace.
 

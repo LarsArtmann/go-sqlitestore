@@ -15,18 +15,18 @@
 
 ## High Impact
 
-| Task                                                                | Status    | Impact | Effort | Evidence                                                                     |
-| ------------------------------------------------------------------- | --------- | ------ | ------ | ---------------------------------------------------------------------------- |
-| Split `engine.go` below the 350-line file-size cap (444 lines today) | 🔴 `TODO` | High   | 1h     | `buildflow -s file-size-check`: "engine.go: 444 lines (max 350)"; natural seams: DSN/PRAGMA builders (~engine.go:183-245), purge helpers (~engine.go:413-437) |
+| Task                                                           | Status    | Impact | Effort | Evidence                                                                                                                                                         |
+| -------------------------------------------------------------- | --------- | ------ | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Split `engine.go` below the 350-line file-size cap (443 lines) | 🔴 `TODO` | High   | 1h     | buildflow file-size-check finding: "engine.go: 444 lines (max 350)"; natural seams: DSN/PRAGMA builders (~engine.go:183-245), purge helpers (~engine.go:421-437) |
 
 ## Medium Impact
 
-| Task                                                             | Status    | Impact | Effort | Evidence                                                                    |
-| ---------------------------------------------------------------- | --------- | ------ | ------ | --------------------------------------------------------------------------- |
-| Generate curated `.golangci.yml` via buildflow auto-configure    | 🔴 `TODO` | Med    | 15min  | No `.golangci.yml` in repo root; step exists: `buildflow -s golangci-lint-auto-configure --fix` (review the diff before accepting) |
+| Task                                                          | Status    | Impact | Effort | Evidence                                                                                                                           |
+| ------------------------------------------------------------- | --------- | ------ | ------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Generate curated `.golangci.yml` via buildflow auto-configure | 🔴 `TODO` | Med    | 15min  | No `.golangci.yml` in repo root; step exists: `buildflow -s golangci-lint-auto-configure --fix` (review the diff before accepting) |
 
 ## Low Impact
 
-| Task                                                       | Status    | Impact | Effort  | Evidence                                                      |
-| ---------------------------------------------------------- | --------- | ------ | ------- | ------------------------------------------------------------- |
-| Install the buildflow pre-commit hook                      | 🔴 `TODO` | Low    | 2min    | `.git/hooks/` carries only samples; `buildflow precommit install` wires the pre-commit mode gate |
+| Task                                  | Status    | Impact | Effort | Evidence                                                                                         |
+| ------------------------------------- | --------- | ------ | ------ | ------------------------------------------------------------------------------------------------ |
+| Install the buildflow pre-commit hook | 🔴 `TODO` | Low    | 2min   | `.git/hooks/` carries only samples; `buildflow precommit install` wires the pre-commit mode gate |
