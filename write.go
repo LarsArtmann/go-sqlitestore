@@ -23,6 +23,15 @@ const (
 	// retry doubles the delay (100ms, 200ms, 400ms), giving external
 	// processes time to release the write lock.
 	busyRetryBase = 100 * time.Millisecond
+
+	// debugSQLMaxLen caps how much of a statement TruncateSQL keeps for
+	// debug logging, so large INSERT payloads cannot flood the log.
+	debugSQLMaxLen = 200
+
+	// primaryResultCodeMask isolates the low byte of a SQLite result
+	// code: primary codes (SQLITE_BUSY, SQLITE_LOCKED) live in the low
+	// byte, extended codes in the high bits.
+	primaryResultCodeMask = 0xFF
 )
 
 // ExecWrite runs a write statement with the write mutex held and retries on
@@ -55,7 +64,8 @@ func (d *DB) ExecWrite(ctx context.Context, query string, args ...any) (sql.Resu
 		lastErr = err
 
 		if !IsBusy(err) {
-			return nil, err
+			return nil, errorfamily.WrapTransient(err, "sqlitestore.exec_write",
+				"write statement failed")
 		}
 
 		d.busyRetries.Add(1)
@@ -83,7 +93,8 @@ func (d *DB) ExecWrite(ctx context.Context, query string, args ...any) (sql.Resu
 		"error", lastErr.Error(),
 	)
 
-	return nil, lastErr
+	return nil, errorfamily.WrapTransient(lastErr, "sqlitestore.exec_write",
+		"write failed after exhausting SQLITE_BUSY retries")
 }
 
 // WithWriteLock runs fn while holding the engine's write mutex, for
@@ -113,11 +124,11 @@ func (d *DB) WriteLock() func() {
 // TruncateSQL truncates a SQL string for debug logging, keeping the first
 // 200 characters so large INSERT payloads cannot flood the log.
 func TruncateSQL(query string) string {
-	if len(query) <= 200 {
+	if len(query) <= debugSQLMaxLen {
 		return query
 	}
 
-	return query[:200] + "..."
+	return query[:debugSQLMaxLen] + "..."
 }
 
 // IsBusy detects SQLITE_BUSY (result code 5) and SQLITE_LOCKED (result
@@ -134,7 +145,7 @@ func IsBusy(err error) bool {
 		return false
 	}
 
-	primary := sqliteErr.Code() & 0xFF
+	primary := sqliteErr.Code() & primaryResultCodeMask
 
 	return primary == sqlite3.SQLITE_BUSY || primary == sqlite3.SQLITE_LOCKED
 }

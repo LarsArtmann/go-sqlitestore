@@ -27,6 +27,15 @@ const (
 	// writes regardless of this value.
 	defaultBusyTimeoutMS = 3000
 
+	// minPoolConns is the floor for the auto-sized connection pool so
+	// single-CPU boxes still get parallel WAL readers.
+	minPoolConns = 4
+
+	// maxPoolConns caps the auto-sized pool: WAL allows unlimited
+	// concurrent readers, but writes serialize behind the mutex anyway,
+	// so more than this only burns memory per idle connection.
+	maxPoolConns = 8
+
 	// permDir is the directory permission for the database parent directory.
 	permDir = 0o755
 )
@@ -145,7 +154,7 @@ func openDBWithTimeout(path string, cfg config) (*sql.DB, error) {
 
 	maxConns := cfg.maxOpenConns
 	if !cfg.applyConnLimit {
-		maxConns = max(4, min(runtime.NumCPU(), 8))
+		maxConns = max(minPoolConns, min(runtime.NumCPU(), maxPoolConns))
 	}
 
 	db.SetMaxOpenConns(maxConns)
@@ -196,7 +205,12 @@ func (d *DB) Close() error {
 		return nil
 	}
 
-	return d.db.Close()
+	if err := d.db.Close(); err != nil {
+		return errorfamily.WrapInfrastructure(err, "sqlitestore.close",
+			"failed to close underlying handle")
+	}
+
+	return nil
 }
 
 // HealthCheck verifies the database responds to a trivial query. Suitable

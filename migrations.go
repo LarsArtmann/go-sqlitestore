@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
 
@@ -60,8 +61,7 @@ func RunMigrations(ctx context.Context, db *sql.DB, migrations []Migration) erro
 		return err
 	}
 
-	ordered := make([]Migration, len(migrations))
-	copy(ordered, migrations)
+	ordered := slices.Clone(migrations)
 	sortByVersion(ordered)
 
 	for _, migration := range ordered {
@@ -147,7 +147,8 @@ func TableExists(ctx context.Context, db *sql.DB, table string) (bool, error) {
 	err := db.QueryRowContext(ctx,
 		"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?", table).Scan(&count)
 	if err != nil {
-		return false, err
+		return false, errorfamily.WrapTransient(err, "sqlitestore.table_exists",
+			"failed to read sqlite_master row")
 	}
 
 	return count > 0, nil
@@ -158,7 +159,8 @@ func TableExists(ctx context.Context, db *sql.DB, table string) (bool, error) {
 func ColumnExists(ctx context.Context, db *sql.DB, table, column string) (bool, error) {
 	rows, err := db.QueryContext(ctx, fmt.Sprintf("PRAGMA table_info(%s)", table))
 	if err != nil {
-		return false, err
+		return false, errorfamily.WrapInfrastructure(err, "sqlitestore.column_exists",
+			"failed to read PRAGMA table_info")
 	}
 
 	defer func() {
@@ -175,7 +177,8 @@ func ColumnExists(ctx context.Context, db *sql.DB, table, column string) (bool, 
 			dflt        sql.NullString
 		)
 		if err := rows.Scan(&cid, &name, &typ, &notNull, &dflt, &pk); err != nil {
-			return false, err
+			return false, errorfamily.WrapTransient(err, "sqlitestore.column_exists",
+				"failed to scan PRAGMA table_info row")
 		}
 
 		if name == column {
@@ -183,7 +186,12 @@ func ColumnExists(ctx context.Context, db *sql.DB, table, column string) (bool, 
 		}
 	}
 
-	return false, rows.Err()
+	if err := rows.Err(); err != nil {
+		return false, errorfamily.WrapTransient(err, "sqlitestore.column_exists",
+			"failed to iterate PRAGMA table_info rows")
+	}
+
+	return false, nil
 }
 
 // AddColumnIfNotExists adds a column to an existing table if absent.
