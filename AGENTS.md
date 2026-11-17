@@ -16,8 +16,8 @@ consumer repo, not here.
 ## Commands
 
 ```bash
-# Test (README-canonical form; the flag is part of the documented contract)
-GOEXPERIMENT=jsonv2 go test ./...
+# Test (jsonv2 went stable in Go 1.27 — no GOEXPERIMENT flag needed)
+go test ./...
 
 # Race detector (CONTRIBUTING.md)
 go test ./... -race
@@ -71,10 +71,9 @@ exactly one file: `FEATURES.md` (inventory + honest status), `TODO_LIST.md`
 (open work only; done items move to CHANGELOG), `ROADMAP.md` (raw ideas),
 `CHANGELOG.md` (append-only after release; dates must match git tag dates —
 no template placeholders). The docs-gates battery rides inside buildflow
-(`docs-gates cadence .` fails hard when `TODO_LIST.md` is missing). This
-repo has no `docs/status/` corpus — status reports about this library
-live in consumer repos (BuildFlow), which is deliberate for a lib this
-small.
+(`docs-gates cadence .` fails hard when `TODO_LIST.md` is missing).
+Status reports live in `docs/status/` (first one landed 2026-11-17); before
+that, reports about this library lived in consumer repos (BuildFlow).
 
 ## Architecture invariants (don't break these casually)
 
@@ -136,8 +135,8 @@ touch these.
   `sqlite3 ... /lib` (result-code constants); importing the package at all
   runs its init, which registers the driver — no separate blank import
   needed.
-- **Go version**: go.mod says `go 1.27`; tests documented with
-  `GOEXPERIMENT=jsonv2`.
+- **Go version**: go.mod says `go 1.27`; the jsonv2 experiment went
+  stable there, so no `GOEXPERIMENT` flag is needed for tests or builds.
 - **Tests**: Ginkgo v2 + Gomega, external test package (`sqlitestore_test`),
   real on-disk databases in `GinkgoT().TempDir()` — no mocks, and the
   driver cannot be stubbed (unexported error fields), so contention specs

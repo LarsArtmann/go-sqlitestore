@@ -11,7 +11,12 @@ Thanks for your interest in contributing!
 
 ## Development Setup
 
-Run the following commands to set up your development environment:
+The canonical quality gate is BuildFlow, which auto-detects this repo and
+runs lint, format, and tests with cache isolation:
+
+    buildflow
+
+Plain Go commands work too (Go 1.27+, no GOEXPERIMENT flags needed):
 
     go test ./... -race
     golangci-lint run ./...

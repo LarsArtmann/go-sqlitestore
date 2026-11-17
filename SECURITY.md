@@ -2,9 +2,10 @@
 
 ## Supported Versions
 
-| Version | Supported  |
-| ------- | ---------- |
-| v0.1.0  | ✅ Current |
+| Version  | Supported  |
+| -------- | ---------- |
+| v0.1.1   | ✅ Current |
+| < v0.1.1 | ❌         |
 
 Only the latest release receives security fixes. Please update to the latest
 version before reporting issues found in older releases.
@@ -33,9 +34,10 @@ Please do **not** open public issues for security problems. Report privately ins
 ## Security Practices
 
 - All changes are code-reviewed before merge
-- Automated security scanning runs in CI
+- Dependency updates arrive via Dependabot; vulnerability scanning
+  (govulncheck) runs in the local buildflow quality gate
 - Dependencies are kept up to date
 
 ---
 
-_Maintained with [securitymd](https://github.com/LarsArtmann/securitymd). Last updated: 2026-10-11._
+_Maintained with [securitymd](https://github.com/LarsArtmann/securitymd). Last updated: 2026-11-17._

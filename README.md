@@ -84,5 +84,5 @@ and the SQLITE_BUSY/LOCKED retry policy live. Reads use `DB()` freely.
 ## Test
 
 ```bash
-GOEXPERIMENT=jsonv2 go test ./...
+go test ./...
 ```

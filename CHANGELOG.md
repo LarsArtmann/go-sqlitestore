@@ -22,6 +22,13 @@ Release dates match the git tag dates (`git for-each-ref refs/tags`).
 
 ### Changed
 
+- Documentation truth pass: removed the stale `GOEXPERIMENT=jsonv2` test
+  flag from README.md and AGENTS.md (the jsonv2 experiment went stable in
+  Go 1.27), refreshed CONTRIBUTING.md to name buildflow as the canonical
+  quality gate, corrected SECURITY.md (v0.1.1 is the current supported
+  release; vulnerability scanning is local govulncheck + Dependabot, not
+  CI), and updated AGENTS.md's documentation-set note now that
+  `docs/status/` exists.
 - Split `engine.go` (443 lines) into `engine.go` (connection core, 246
   lines), `dsn.go` (DSN + PRAGMA builders, 74), and `write.go` (write
   path, busy retry, `IsBusy`, 140); split the test suite into
