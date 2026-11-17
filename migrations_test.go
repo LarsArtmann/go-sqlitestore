@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -36,7 +35,7 @@ var _ = Describe("sqlitestore migrations", func() {
 		simple := func(version int, table string) mig {
 			return mig{
 				Version:     version,
-				Description: fmt.Sprintf("create %s", table),
+				Description: "create " + table,
 				Up: func(ctx context.Context, db *sql.DB) error {
 					_, err := db.ExecContext(ctx,
 						"CREATE TABLE IF NOT EXISTS "+table+" (id INTEGER PRIMARY KEY)")
@@ -121,8 +120,12 @@ var _ = Describe("sqlitestore migrations", func() {
 			_, err := db.DB().ExecContext(ctx, "CREATE TABLE t (id INTEGER PRIMARY KEY)")
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(sqlitestore.AddColumnIfNotExists(ctx, db.DB(), "t", "extra", "TEXT NOT NULL DEFAULT ''")).To(Succeed())
-			Expect(sqlitestore.AddColumnIfNotExists(ctx, db.DB(), "t", "extra", "TEXT NOT NULL DEFAULT ''")).To(Succeed())
+			Expect(
+				sqlitestore.AddColumnIfNotExists(ctx, db.DB(), "t", "extra", "TEXT NOT NULL DEFAULT ''"),
+			).To(Succeed())
+			Expect(
+				sqlitestore.AddColumnIfNotExists(ctx, db.DB(), "t", "extra", "TEXT NOT NULL DEFAULT ''"),
+			).To(Succeed())
 
 			exists, err := sqlitestore.ColumnExists(ctx, db.DB(), "t", "extra")
 			Expect(err).NotTo(HaveOccurred())

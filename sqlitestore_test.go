@@ -45,6 +45,7 @@ var _ = Describe("sqlitestore engine", func() {
 
 		It("creates the parent directory when missing", func() {
 			db, err := sqlitestore.Open(dir + "/nested/deeper/store.db")
+
 			Expect(err).NotTo(HaveOccurred())
 			defer func() { Expect(db.Close()).To(Succeed()) }()
 
@@ -126,6 +127,7 @@ var _ = Describe("sqlitestore engine", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			const goroutines = 4
+
 			var (
 				wg       sync.WaitGroup
 				sequence []int
@@ -185,10 +187,12 @@ var _ = Describe("sqlitestore engine", func() {
 			path := dir + "/contended.db"
 
 			blocker, err := sqlitestore.OpenDB(path, sqlitestore.WithBusyTimeout(0))
+
 			Expect(err).NotTo(HaveOccurred())
 			defer func() { Expect(blocker.Close()).To(Succeed()) }()
 
 			contender, err := sqlitestore.OpenDB(path, sqlitestore.WithBusyTimeout(0))
+
 			Expect(err).NotTo(HaveOccurred())
 			defer func() { Expect(contender.Close()).To(Succeed()) }()
 
@@ -196,6 +200,7 @@ var _ = Describe("sqlitestore engine", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			tx, err := blocker.BeginTx(ctx, nil)
+
 			Expect(err).NotTo(HaveOccurred())
 			defer func() { Expect(tx.Rollback()).To(Succeed()) }()
 
@@ -239,6 +244,7 @@ var _ = Describe("sqlitestore engine", func() {
 				sqlitestore.WithMaxOpenConns(2),
 				sqlitestore.WithBusyTimeout(1500),
 			)
+
 			Expect(err).NotTo(HaveOccurred())
 			defer func() { Expect(db.Close()).To(Succeed()) }()
 

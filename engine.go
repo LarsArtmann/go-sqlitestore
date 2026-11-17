@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/larsartmann/go-error-family"
+	errorfamily "github.com/larsartmann/go-error-family"
 )
 
 const (
@@ -142,6 +142,7 @@ func openDBWithTimeout(path string, cfg config) (*sql.DB, error) {
 
 		return nil, err
 	}
+
 	maxConns := cfg.maxOpenConns
 	if !cfg.applyConnLimit {
 		maxConns = max(4, min(runtime.NumCPU(), 8))

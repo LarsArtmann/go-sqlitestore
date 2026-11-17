@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/larsartmann/go-error-family"
+	errorfamily "github.com/larsartmann/go-error-family"
 )
 
 // Migration represents a single versioned schema migration. Each migration
