@@ -2,6 +2,8 @@ module github.com/larsartmann/go-sqlitestore
 
 go 1.27
 
+toolchain go1.27.4
+
 require (
 	github.com/larsartmann/go-error-family v0.12.0
 	github.com/onsi/ginkgo/v2 v2.34.0
