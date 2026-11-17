@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
+	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -217,10 +219,135 @@ var _ = Describe("sqlitestore engine", func() {
 		})
 	})
 
+	Describe("WriteLock primitives", func() {
+		It("serializes multi-statement units through WithWriteLock", func() {
+			db := openFresh("write-lock.db")
+			defer func() { Expect(db.Close()).To(Succeed()) }()
+
+			_, err := db.ExecWrite(ctx, "CREATE TABLE t (id INTEGER PRIMARY KEY)")
+			Expect(err).NotTo(HaveOccurred())
+
+			const goroutines = 4
+			var (
+				wg       sync.WaitGroup
+				sequence []int
+			)
+
+			for i := range goroutines {
+				wg.Add(1)
+
+				go func(slot int) {
+					defer GinkgoRecover()
+					defer wg.Done()
+
+					Expect(db.WithWriteLock(func() error {
+						_, err := db.DB().ExecContext(ctx,
+							"INSERT INTO t (id) VALUES (?)", slot)
+						if err != nil {
+							return err
+						}
+
+						sequence = append(sequence, slot)
+
+						return nil
+					})).To(Succeed())
+				}(i + 1)
+			}
+
+			wg.Wait()
+			Expect(sequence).To(HaveLen(goroutines))
+
+			var count int
+			Expect(db.DB().QueryRowContext(ctx, "SELECT COUNT(*) FROM t").Scan(&count)).To(Succeed())
+			Expect(count).To(Equal(goroutines))
+		})
+
+		It("exposes WriteLock with an explicit release", func() {
+			db := openFresh("write-lock-explicit.db")
+			defer func() { Expect(db.Close()).To(Succeed()) }()
+
+			release := db.WriteLock()
+			_, err := db.DB().ExecContext(ctx, "CREATE TABLE t (id INTEGER PRIMARY KEY)")
+			Expect(err).NotTo(HaveOccurred())
+			release()
+
+			// After release, ExecWrite must be able to take the mutex again.
+			_, err = db.ExecWrite(ctx, "INSERT INTO t (id) VALUES (1)")
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
 	Describe("IsBusy", func() {
 		It("classifies a plain error as not-busy", func() {
 			Expect(sqlitestore.IsBusy(errors.New("some failure"))).To(BeFalse())
 			Expect(sqlitestore.IsBusy(nil)).To(BeFalse())
+		})
+
+		It("classifies a real SQLITE_BUSY from a contending writer", func() {
+			path := dir + "/contended.db"
+
+			blocker, err := sqlitestore.OpenDB(path, sqlitestore.WithBusyTimeout(0))
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { Expect(blocker.Close()).To(Succeed()) }()
+
+			contender, err := sqlitestore.OpenDB(path, sqlitestore.WithBusyTimeout(0))
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { Expect(contender.Close()).To(Succeed()) }()
+
+			_, err = blocker.ExecContext(ctx, "CREATE TABLE t (id INTEGER PRIMARY KEY)")
+			Expect(err).NotTo(HaveOccurred())
+
+			tx, err := blocker.BeginTx(ctx, nil)
+			Expect(err).NotTo(HaveOccurred())
+			defer func() { Expect(tx.Rollback()).To(Succeed()) }()
+
+			_, err = tx.ExecContext(ctx, "INSERT INTO t (id) VALUES (1)")
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = contender.ExecContext(ctx, "INSERT INTO t (id) VALUES (2)")
+			Expect(err).To(HaveOccurred())
+			Expect(sqlitestore.IsBusy(err)).To(BeTrue(),
+				"expected SQLITE_BUSY from the contending writer, got: %v", err)
+		})
+	})
+
+	Describe("TableExists", func() {
+		It("reports table existence accurately", func() {
+			db := openFresh("tables.db")
+			defer func() { Expect(db.Close()).To(Succeed()) }()
+
+			_, err := db.DB().ExecContext(ctx, "CREATE TABLE real (id INTEGER PRIMARY KEY)")
+			Expect(err).NotTo(HaveOccurred())
+
+			exists, err := sqlitestore.TableExists(ctx, db.DB(), "real")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(exists).To(BeTrue())
+
+			exists, err = sqlitestore.TableExists(ctx, db.DB(), "missing")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(exists).To(BeFalse())
+		})
+	})
+
+	Describe("TruncateSQL", func() {
+		It("keeps short queries intact and truncates long ones", func() {
+			short := "SELECT 1"
+			Expect(sqlitestore.TruncateSQL(short)).To(Equal(short))
+
+			long := strings.Repeat("x", 250)
+			truncated := sqlitestore.TruncateSQL(long)
+			Expect(truncated).To(HaveLen(203))
+			Expect(truncated).To(HaveSuffix("..."))
+		})
+	})
+
+	Describe("IsDuplicateColumnError", func() {
+		It("matches only the duplicate-column case", func() {
+			Expect(sqlitestore.IsDuplicateColumnError(
+				errors.New("duplicate column name: extra"))).To(BeTrue())
+			Expect(sqlitestore.IsDuplicateColumnError(
+				errors.New("no such table: t"))).To(BeFalse())
+			Expect(sqlitestore.IsDuplicateColumnError(nil)).To(BeFalse())
 		})
 	})
 
