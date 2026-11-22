@@ -13,6 +13,10 @@ import (
 	"github.com/larsartmann/go-sqlitestore"
 )
 
+// errPlainFailure is a sentinel with no SQLITE semantics, for asserting
+// IsBusy's negative classification.
+var errPlainFailure = errors.New("some failure")
+
 var _ = Describe("sqlitestore engine", func() {
 	var (
 		ctx context.Context
@@ -179,7 +183,7 @@ var _ = Describe("sqlitestore engine", func() {
 
 	Describe("IsBusy", func() {
 		It("classifies a plain error as not-busy", func() {
-			Expect(sqlitestore.IsBusy(errors.New("some failure"))).To(BeFalse())
+			Expect(sqlitestore.IsBusy(errPlainFailure)).To(BeFalse())
 			Expect(sqlitestore.IsBusy(nil)).To(BeFalse())
 		})
 

@@ -4,8 +4,8 @@
 
 | Version  | Supported  |
 | -------- | ---------- |
-| v0.1.1   | ✅ Current |
-| < v0.1.1 | ❌         |
+| v0.1.2   | ✅ Current |
+| < v0.1.2 | ❌         |
 
 Only the latest release receives security fixes. Please update to the latest
 version before reporting issues found in older releases.
@@ -40,4 +40,4 @@ Please do **not** open public issues for security problems. Report privately ins
 
 ---
 
-_Maintained with [securitymd](https://github.com/LarsArtmann/securitymd). Last updated: 2026-11-17._
+_Maintained with [securitymd](https://github.com/LarsArtmann/securitymd). Last updated: 2026-11-22._

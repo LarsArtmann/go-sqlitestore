@@ -148,7 +148,7 @@ touch these.
 
 ## Release
 
-Versioned by git tag (`v0.1.0`, `v0.1.1`) + a `CHANGELOG.md` entry per
+Versioned by git tag (`v0.1.0`–`v0.1.2`) + a `CHANGELOG.md` entry per
 release (Keep-a-Changelog format, `## [x.y.z] - date` sections). Cut via the
 go-release skill. Dependabot keeps go modules weekly (minor+patch grouped).
 
@@ -166,3 +166,8 @@ go-release skill. Dependabot keeps go modules weekly (minor+patch grouped).
   `buildflow -s golangci-lint-auto-configure --fix` over hand-curating it.
 - No CI workflows beyond dependabot; quality enforcement is local buildflow
   plus the pre-commit hook.
+- Known tool quirk: the govulncheck step reports GO-2026-6859 (net/http,
+  fixed in go1.27.4) as long as the MACHINE's Go is 1.27.3 — the module
+  itself pins `toolchain go1.27.4` in go.mod, which is the remediation
+  for consumers; the gate finding clears when the system toolchain
+  updates.

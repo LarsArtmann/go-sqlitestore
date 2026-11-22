@@ -11,6 +11,12 @@ import (
 	"github.com/larsartmann/go-sqlitestore"
 )
 
+var (
+	errBoom            = errors.New("boom")
+	errDuplicateColumn = errors.New("duplicate column name: extra")
+	errNoSuchTable     = errors.New("no such table: t")
+)
+
 var _ = Describe("sqlitestore migrations", func() {
 	var (
 		ctx context.Context
@@ -102,7 +108,7 @@ var _ = Describe("sqlitestore migrations", func() {
 				Version:     4,
 				Description: "explodes",
 				Up: func(ctx context.Context, db *sql.DB) error {
-					return errors.New("boom")
+					return errBoom
 				},
 			}
 
@@ -153,10 +159,8 @@ var _ = Describe("sqlitestore migrations", func() {
 
 	Describe("IsDuplicateColumnError", func() {
 		It("matches only the duplicate-column case", func() {
-			Expect(sqlitestore.IsDuplicateColumnError(
-				errors.New("duplicate column name: extra"))).To(BeTrue())
-			Expect(sqlitestore.IsDuplicateColumnError(
-				errors.New("no such table: t"))).To(BeFalse())
+			Expect(sqlitestore.IsDuplicateColumnError(errDuplicateColumn)).To(BeTrue())
+			Expect(sqlitestore.IsDuplicateColumnError(errNoSuchTable)).To(BeFalse())
 			Expect(sqlitestore.IsDuplicateColumnError(nil)).To(BeFalse())
 		})
 	})

@@ -13,17 +13,9 @@
 | 🔵 `BLOCKED`     | Cannot proceed; external dependency or decision needed. |
 | 🟢 `DONE`        | Completed. Remove here, log in `CHANGELOG.md`.          |
 
-## Medium Impact
-
-| Task                                                        | Status       | Impact | Effort | Evidence                                                                                                                         |
-| ----------------------------------------------------------- | ------------ | ------ | ------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| Bump Go toolchain to 1.27.4 when released (stdlib vuln fix) | 🔵 `BLOCKED` | Med    | 5min   | govulncheck: GO-2026-6859 (net/http MaxBytesReader crash) found in go1.27.3, fixed in go1.27.4; `go version` says go1.27.3 today |
-| Read govulncheck's full 12-finding list                     | 🔴 `TODO`    | Med    | 15min  | Only GO-2026-6859 verified this session; "+7 more" unread (`buildflow -s govulncheck --format finding`)                          |
-
-Harvested from `docs/status/2026-11-17_22-02_docs-health-audit-quality-gate-green.md`
-§f (items routed to ROADMAP at harvest time: CI workflow, benchmark suite,
-VACUUM/backup helpers, v1.0 commitment, read-only DSN — already rows there).
-Done in the 2026-11-17 doc-truth pass and moved to CHANGELOG [Unreleased]:
-GOEXPERIMENT removal, AGENTS.md docs-set paragraph, CONTRIBUTING.md
-refresh, SECURITY.md freshness fix, plus the earlier audit work (file
-splits, `.golangci.yml`, pre-commit hook).
+No open items. Everything from the 2026-11-17 audit and the 2026-11-22
+release prep landed in CHANGELOG [0.1.2]: GOEXPERIMENT doc removal,
+CONTRIBUTING/SECURITY/AGENTS refresh, the Go toolchain pin to go1.27.4
+(GO-2026-6859), and the 15 golangci-lint warning fixes. The govulncheck
+gate finding is environmental (machine Go still 1.27.3) — see AGENTS.md
+"Repo quirks"; it needs no repo work.

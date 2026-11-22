@@ -9,6 +9,16 @@ Release dates match the git tag dates (`git for-each-ref refs/tags`).
 
 ### Added
 
+- Nothing yet.
+
+### Fixed
+
+- Nothing yet.
+
+## [0.1.2] - 2026-11-22
+
+### Added
+
 - Direct tests for the write-lock primitives (`WithWriteLock`, `WriteLock`),
   the `IsBusy` positive path (a real SQLITE_BUSY reproduced with a
   contending writer and `busy_timeout=0`), `TableExists`, `TruncateSQL`,
@@ -35,6 +45,22 @@ Release dates match the git tag dates (`git for-each-ref refs/tags`).
   `sqlitestore_test.go` + `migrations_test.go`. No API change — package,
   exports, and behavior are identical; the full buildflow quality gate now
   exits 0.
+- Resolved all 15 golangci-lint warnings: every returned error is now
+  wrapped via `go-error-family` per the package convention
+  (`sqlitestore.close`, `sqlitestore.exec_write`,
+  `sqlitestore.table_exists`, `sqlitestore.column_exists`; wrapping
+  preserves `IsBusy`/`errors.AsType` detection through `Unwrap`), magic
+  numbers became documented constants (`minPoolConns`, `maxPoolConns`,
+  `debugSQLMaxLen`, `primaryResultCodeMask`), migration ordering clones
+  via `slices.Clone`, and tests use package-level error sentinels plus
+  `t.Parallel()`.
+
+### Security
+
+- Pinned `toolchain go1.27.4` in go.mod, closing GO-2026-6859 (net/http
+  MaxBytesReader header race) for builds of this module: with
+  `GOTOOLCHAIN=auto` (the default), Go now builds sqlitestore with the
+  fixed toolchain.
 
 ### Fixed
 

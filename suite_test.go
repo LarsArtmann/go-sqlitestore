@@ -8,6 +8,7 @@ import (
 )
 
 func TestSQLitestore(t *testing.T) {
+	t.Parallel()
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "SQLitestore Suite")
 }
