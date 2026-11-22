@@ -152,6 +152,13 @@ Versioned by git tag (`v0.1.0`–`v0.1.2`) + a `CHANGELOG.md` entry per
 release (Keep-a-Changelog format, `## [x.y.z] - date` sections). Cut via the
 go-release skill. Dependabot keeps go modules weekly (minor+patch grouped).
 
+Pre-tag guard (v0.1.2 near-miss, 2026-11-22): something silently stripped
+`toolchain go1.27.4` from the working-tree go.mod between edit and commit, and
+`git add -A` happily staged the stripped state. Before ANY release commit:
+review `git diff --cached` on the headline files; after tagging: verify the
+TAGGED tree (`git show <tag>:go.mod` contains the pin), never the working
+tree. Guard the tag+push behind an assertion chain if go.mod is the headline.
+
 ## Repo quirks
 
 - An auto-commit daemon commits working-tree changes with heuristic

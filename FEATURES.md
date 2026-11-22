@@ -5,7 +5,9 @@
 > ship, change, or break. Audited 2026-11-17 against `engine.go`, `dsn.go`,
 > `write.go`, `migrations.go`, and the Ginkgo suite (all rows verified with
 > `go test -race -count=1 ./...` green; line refs taken after the
-> engine/dsn/write file split of the same date).
+> engine/dsn/write file split of the same date). Line refs re-pinned
+> 2026-11-22 after the v0.1.2 lint fixes (constants, wrapcheck rewraps)
+> shifted engine.go, write.go, and migrations.go.
 
 ## Status legend
 
@@ -22,45 +24,45 @@ why not?
 
 ## Connection setup
 
-| Feature                                                                | Status                | Evidence                                          | Notes                                                         |
-| ---------------------------------------------------------------------- | --------------------- | ------------------------------------------------- | ------------------------------------------------------------- |
-| `Open` / `OpenDB` / `New` engine constructors                          | 🟢 `FULLY_FUNCTIONAL` | `engine.go:95-173`; "Open and schema setup" specs | Parent directory auto-created; caller must `Close`            |
-| DSN builders with per-connection PRAGMAs (`BuildDSN`, `BuildDSN…MS`)   | 🟢 `FULLY_FUNCTIONAL` | `dsn.go:14-40`; every spec opens through them     | PRAGMAs ride the DSN so all pooled connections inherit them   |
-| WAL + optimization PRAGMAs (`EnableWAL`, `ApplyOptimizations`)         | 🟢 `FULLY_FUNCTIONAL` | `dsn.go:43-72`; spec asserts `journal_mode=wal`   | synchronous=NORMAL, wal_autocheckpoint=1000, 64MB cache, mmap |
-| Connection pool sizing (`WithMaxOpenConns`, idle cap)                  | 🟢 `FULLY_FUNCTIONAL` | `engine.go:150-155`; "Options" spec asserts cap=2 | Default `max(4, min(NumCPU, 8))`; idle conns = open cap       |
-| Busy-timeout configuration (`WithBusyTimeout`, `DefaultBusyTimeoutMS`) | 🟢 `FULLY_FUNCTIONAL` | `engine.go:28-43,73-76`; "Options" spec           | 3s default; caps the 3× retry cycle at ~9s                    |
+| Feature                                                                | Status                | Evidence                                           | Notes                                                         |
+| ---------------------------------------------------------------------- | --------------------- | -------------------------------------------------- | ------------------------------------------------------------- |
+| `Open` / `OpenDB` / `New` engine constructors                          | 🟢 `FULLY_FUNCTIONAL` | `engine.go:104-184`; "Open and schema setup" specs | Parent directory auto-created; caller must `Close`            |
+| DSN builders with per-connection PRAGMAs (`BuildDSN`, `BuildDSN…MS`)   | 🟢 `FULLY_FUNCTIONAL` | `dsn.go:14-37`; every spec opens through them      | PRAGMAs ride the DSN so all pooled connections inherit them   |
+| WAL + optimization PRAGMAs (`EnableWAL`, `ApplyOptimizations`)         | 🟢 `FULLY_FUNCTIONAL` | `dsn.go:43-61`; spec asserts `journal_mode=wal`    | synchronous=NORMAL, wal_autocheckpoint=1000, 64MB cache, mmap |
+| Connection pool sizing (`WithMaxOpenConns`, idle cap)                  | 🟢 `FULLY_FUNCTIONAL` | `engine.go:155-165`; "Options" spec asserts cap=2  | Default `max(4, min(NumCPU, 8))`; idle conns = open cap       |
+| Busy-timeout configuration (`WithBusyTimeout`, `DefaultBusyTimeoutMS`) | 🟢 `FULLY_FUNCTIONAL` | `engine.go:28,43-45,81-84`; "Options" spec         | 3s default; caps the 3× retry cycle at ~9s                    |
 
 ## Write path (the core product)
 
-| Feature                                                                  | Status                | Evidence                                                                       | Notes                                            |
-| ------------------------------------------------------------------------ | --------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------ |
-| `ExecWrite`: write mutex + SQLITE_BUSY/LOCKED retry (3×, exp backoff)    | 🟢 `FULLY_FUNCTIONAL` | `write.go:14-89`; "ExecWrite" specs + `-race` clean                            | Single statements only                           |
-| Multi-statement write units (`WithWriteLock`, `WriteLock`)               | 🟢 `FULLY_FUNCTIONAL` | `write.go:92-112`; "WriteLock primitives" specs (4 goroutines, `-race`)        | Ship since v0.1.0; direct tests added 2026-11-17 |
-| `IsBusy` classification (masks extended result codes)                    | 🟢 `FULLY_FUNCTIONAL` | `write.go:127-141`; specs incl. a real SQLITE_BUSY from a contending writer    | Negative + positive paths both covered           |
-| Closed-store guards (nil-safe `ExecWrite`/`WithWriteLock`/`HealthCheck`) | 🟢 `FULLY_FUNCTIONAL` | `write.go:37-39,95-97`, `engine.go:203-205`; "rejects writes after Close" spec |                                                  |
+| Feature                                                                  | Status                | Evidence                                                                         | Notes                                            |
+| ------------------------------------------------------------------------ | --------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `ExecWrite`: write mutex + SQLITE_BUSY/LOCKED retry (3×, exp backoff)    | 🟢 `FULLY_FUNCTIONAL` | `write.go:16-98`; "ExecWrite" specs + `-race` clean                              | Single statements only                           |
+| Multi-statement write units (`WithWriteLock`, `WriteLock`)               | 🟢 `FULLY_FUNCTIONAL` | `write.go:103-122`; "WriteLock primitives" specs (4 goroutines, `-race`)         | Ship since v0.1.0; direct tests added 2026-11-17 |
+| `IsBusy` classification (masks extended result codes)                    | 🟢 `FULLY_FUNCTIONAL` | `write.go:138-151`; specs incl. a real SQLITE_BUSY from a contending writer      | Negative + positive paths both covered           |
+| Closed-store guards (nil-safe `ExecWrite`/`WithWriteLock`/`HealthCheck`) | 🟢 `FULLY_FUNCTIONAL` | `write.go:45-47,104-106`, `engine.go:219-221`; "rejects writes after Close" spec |                                                  |
 
 ## Migrations
 
 | Feature                                              | Status                | Evidence                                                   | Notes                                                    |
 | ---------------------------------------------------- | --------------------- | ---------------------------------------------------------- | -------------------------------------------------------- |
-| Membership-based runner (`RunMigrations`)            | 🟢 `FULLY_FUNCTIONAL` | `migrations.go:52-96`; 4 "RunMigrations" specs             | Unrecorded versions apply regardless of numeric position |
-| Immutable history (recorded version never re-runs)   | 🟢 `FULLY_FUNCTIONAL` | `migrations.go:67-68`; "never re-runs" spec                | Version recorded only after `Up` succeeds                |
-| Schema introspection (`TableExists`, `ColumnExists`) | 🟢 `FULLY_FUNCTIONAL` | `migrations.go:144-187`; "TableExists" + "AddColumn" specs |                                                          |
-| `AddColumnIfNotExists` + `IsDuplicateColumnError`    | 🟢 `FULLY_FUNCTIONAL` | `migrations.go:193-221`; idempotency + matcher specs       | Race-tolerant: duplicate-column errors ignored           |
+| Membership-based runner (`RunMigrations`)            | 🟢 `FULLY_FUNCTIONAL` | `migrations.go:53-96`; 4 "RunMigrations" specs             | Unrecorded versions apply regardless of numeric position |
+| Immutable history (recorded version never re-runs)   | 🟢 `FULLY_FUNCTIONAL` | `migrations.go:67-70,82-87`; "never re-runs" spec          | Version recorded only after `Up` succeeds                |
+| Schema introspection (`TableExists`, `ColumnExists`) | 🟢 `FULLY_FUNCTIONAL` | `migrations.go:144-195`; "TableExists" + "AddColumn" specs |                                                          |
+| `AddColumnIfNotExists` + `IsDuplicateColumnError`    | 🟢 `FULLY_FUNCTIONAL` | `migrations.go:201-229`; idempotency + matcher specs       | Race-tolerant: duplicate-column errors ignored           |
 
 ## Maintenance helpers
 
 | Feature                                      | Status                | Evidence                                     | Notes                                     |
 | -------------------------------------------- | --------------------- | -------------------------------------------- | ----------------------------------------- |
-| Age-based purge (`PurgeByExpiry`)            | 🟢 `FULLY_FUNCTIONAL` | `engine.go:224-241`; 2 "PurgeByExpiry" specs | Identifiers interpolated — constants only |
-| Health check (`HealthCheck`)                 | 🟢 `FULLY_FUNCTIONAL` | `engine.go:203-215`; WAL spec exercises it   | DI-friendly ping                          |
-| Telemetry (`BusyRetryCount`) + `SetDebugSQL` | 🟢 `FULLY_FUNCTIONAL` | `engine.go:178-189`; both specs              | Atomic counters; debug logging opt-in     |
-| `TruncateSQL` debug-safe logging helper      | 🟢 `FULLY_FUNCTIONAL` | `write.go:115-124`; "TruncateSQL" spec       | 200-char cap                              |
+| Age-based purge (`PurgeByExpiry`)            | 🟢 `FULLY_FUNCTIONAL` | `engine.go:239-255`; 2 "PurgeByExpiry" specs | Identifiers interpolated — constants only |
+| Health check (`HealthCheck`)                 | 🟢 `FULLY_FUNCTIONAL` | `engine.go:218-229`; WAL spec exercises it   | DI-friendly ping                          |
+| Telemetry (`BusyRetryCount`) + `SetDebugSQL` | 🟢 `FULLY_FUNCTIONAL` | `engine.go:188-196`; both specs              | Atomic counters; debug logging opt-in     |
+| `TruncateSQL` debug-safe logging helper      | 🟢 `FULLY_FUNCTIONAL` | `write.go:126-132`; "TruncateSQL" spec       | 200-char cap                              |
 
 ## Explicitly out of scope (by design, not demand-gated)
 
-| Non-feature                                 | Reason                                                                                                                |
-| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Application/domain types (tools, findings…) | The cardinal rule: consumers own schemas; this package owns mechanics only (`doc.go:6-9`)                             |
-| Read-path wrappers / query builders         | `DB()` hands back the raw handle for reads; consumers own their query surfaces                                        |
-| Migrations auto-run on `Open`               | Deliberate: callers pass their own list because state and cache databases carry different schemas (`engine.go:92-94`) |
+| Non-feature                                 | Reason                                                                                                                  |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Application/domain types (tools, findings…) | The cardinal rule: consumers own schemas; this package owns mechanics only (`doc.go:6-9`)                               |
+| Read-path wrappers / query builders         | `DB()` hands back the raw handle for reads; consumers own their query surfaces                                          |
+| Migrations auto-run on `Open`               | Deliberate: callers pass their own list because state and cache databases carry different schemas (`engine.go:101-103`) |

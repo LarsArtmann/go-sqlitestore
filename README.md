@@ -1,5 +1,7 @@
 # go-sqlitestore
 
+[![GitHub release](https://img.shields.io/github/v/release/LarsArtmann/go-sqlitestore?include_prereleases&sort=semver)](https://github.com/LarsArtmann/go-sqlitestore/releases)
+
 Shared SQLite engine core for the LarsArtmann tool fleet: connection setup
 (DSN with per-connection PRAGMAs, WAL, optimizations), a versioned
 membership-based migration runner, a write-mutex + SQLITE_BUSY retry
